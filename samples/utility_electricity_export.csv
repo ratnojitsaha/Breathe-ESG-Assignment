@@ -1,0 +1,7 @@
+Meter ID,Service Address,Period Start,Period End,Usage kWh,Unit,Tariff,Bill Number
+DE-HH-884201,Plant Hamburg Building A,2026-01-18,2026-02-17,84210,kWh,HT Industrial 15min,STW-2026-0217-884201
+DE-HH-884202,Plant Hamburg Building B,2026-01-18,2026-02-17,39280,kWh,HT Industrial 15min,STW-2026-0217-884202
+DE-MU-119045,Munich Assembly Hall,01/02/2026,28/02/2026,118.4,MWh,Green Power Flex,SWM-2026-02-119045
+DE-MU-119046,Munich Paint Shop,2026-02-20,2026-03-19,286700,kWh,Green Power Flex,SWM-2026-03-119046
+NL-AMS-50219,Amsterdam Sales Office,2026-03-05,2026-04-04,-910,kWh,Commercial Small Load,NUON-50219-202604
+DE-HH-884201,Plant Hamburg Building A,18.03.2026,17.04.2026,79940,kWh,HT Industrial 15min,STW-2026-0417-884201

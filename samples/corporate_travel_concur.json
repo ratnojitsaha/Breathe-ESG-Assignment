@@ -1,0 +1,54 @@
+{
+  "provider": "Concur-like expense export",
+  "generated_at": "2026-04-08T08:30:00Z",
+  "expenses": [
+    {
+      "expense_id": "EXP-2026-000912",
+      "type": "flight",
+      "date": "2026-02-12",
+      "employee_cost_center": "ESG-PROC-DE",
+      "origin_airport": "FRA",
+      "destination_airport": "LHR",
+      "airline": "Lufthansa",
+      "distance_km": 655,
+      "cabin_class": "economy"
+    },
+    {
+      "expense_id": "EXP-2026-000944",
+      "type": "flight",
+      "date": "14.02.2026",
+      "employee_cost_center": "SALES-APAC",
+      "origin_airport": "MUC",
+      "destination_airport": "BLR",
+      "airline": "Emirates",
+      "cabin_class": "business"
+    },
+    {
+      "expense_id": "EXP-2026-001004",
+      "type": "hotel",
+      "date": "2026-02-15",
+      "employee_cost_center": "SALES-APAC",
+      "vendor": "Taj MG Road Bengaluru",
+      "nights": 4,
+      "city": "Bengaluru"
+    },
+    {
+      "expense_id": "EXP-2026-001019",
+      "type": "taxi",
+      "date": "02/18/2026",
+      "employee_cost_center": "SALES-APAC",
+      "vendor": "Airport taxi",
+      "distance_km": 38
+    },
+    {
+      "expense_id": "EXP-2026-001101",
+      "type": "flight",
+      "date": "2026-03-03",
+      "employee_cost_center": "FINANCE-US",
+      "origin_airport": "JFK",
+      "destination_airport": "ZZZ",
+      "airline": "Delta",
+      "distance_km": 5840
+    }
+  ]
+}
