@@ -13,7 +13,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         companies = [
-            ("acme-manufacturing", "Acme Manufacturing GmbH"),
+            ("breathe-esg-assignment", "Breathe-ESG-Assignment"),
             ("rhein-industries", "Rhein Industries AG"),
         ]
         source_specs = [

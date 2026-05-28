@@ -78,6 +78,11 @@ CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS")
 if not CORS_ALLOWED_ORIGINS:
     raise RuntimeError("CORS_ALLOWED_ORIGINS is not set. Configure it in backend/.env.")
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS.split(",") if origin.strip()]
+_cors_origin_regexes = os.getenv("CORS_ALLOWED_ORIGIN_REGEXES", "")
+if _cors_origin_regexes:
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+        regex.strip() for regex in _cors_origin_regexes.split(",") if regex.strip()
+    ]
 
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",

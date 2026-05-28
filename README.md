@@ -22,7 +22,7 @@ Then open:
 - Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:8000/api/`
 
-The backend container runs migrations and seeds `Rhein Industries AG` with three data sources.
+The backend container runs migrations and seeds `Breathe-ESG-Assignment` and `Rhein Industries AG` with three data sources each.
 
 ## Manual Backend Setup
 
