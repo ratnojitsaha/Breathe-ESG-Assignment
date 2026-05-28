@@ -1,4 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+if (!API_BASE) {
+  throw new Error("VITE_API_BASE_URL is not set. Configure it in frontend/.env.");
+}
 
 export type Company = { id: number; name: string; slug: string };
 export type DataSource = { id: number; company: number; source_type: string; name: string };
