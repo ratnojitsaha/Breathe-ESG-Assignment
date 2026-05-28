@@ -145,8 +145,12 @@ export default function App() {
     });
   }, [issues, records, sourceTab]);
 
-  const failedIssues = filteredIssues.filter((issue) => issue.severity === "ERROR");
-  const reviewRecords = records.filter((record) => !record.locked_for_audit);
+  const exceptionIssues = filteredIssues.filter(
+    (issue) => issue.severity === "ERROR" || issue.severity === "WARNING"
+  );
+  const reviewRecords = records.filter(
+    (record) => !record.locked_for_audit && record.review_status !== "APPROVED" && record.review_status !== "REJECTED"
+  );
   const lockedRecords = records.filter((record) => record.locked_for_audit);
 
   async function review(record: NormalizedRecord, status: "APPROVED" | "REJECTED") {
@@ -268,7 +272,7 @@ export default function App() {
                   summary={summary}
                   sourceTab={sourceTab}
                   setSourceTab={setSourceTab}
-                  failedIssues={failedIssues}
+                  exceptionIssues={exceptionIssues}
                   records={reviewRecords}
                   selected={selected}
                   setSelected={setSelected}
@@ -302,7 +306,7 @@ function ReviewView({
   summary,
   sourceTab,
   setSourceTab,
-  failedIssues,
+  exceptionIssues,
   records,
   selected,
   setSelected,
@@ -314,7 +318,7 @@ function ReviewView({
   summary: Summary;
   sourceTab: string;
   setSourceTab: (value: string) => void;
-  failedIssues: ValidationIssue[];
+  exceptionIssues: ValidationIssue[];
   records: NormalizedRecord[];
   selected: NormalizedRecord | null;
   setSelected: (record: NormalizedRecord) => void;
@@ -339,7 +343,7 @@ function ReviewView({
       </div>
 
       <SourceTabs summary={summary} active={sourceTab} onChange={setSourceTab} companyId={companyId} sources={sources} onUploaded={onUploaded} />
-      <ExceptionPanel issues={failedIssues} />
+      <ExceptionPanel issues={exceptionIssues} />
 
       <div className="mt-7 grid gap-6 xl:grid-cols-[1fr_420px]">
         <ReviewTable records={records} selected={selected} onSelect={setSelected} />
@@ -461,17 +465,19 @@ function ExceptionPanel({ issues }: { issues: ValidationIssue[] }) {
   return (
     <section className="exception-panel">
       <div>
-        <h2>Failed to ingest or normalize - {issues.length}</h2>
-        <p>Each item explains why the row is blocked and what an analyst or admin should do next.</p>
+        <h2>Failed or Suspicious - {issues.length}</h2>
+        <p>Each item explains why the row is blocked or flagged. Check raw data and resolve before approval.</p>
       </div>
       <div className="exception-grid">
         {issues.slice(0, 6).map((issue) => (
           <article key={issue.id} className="exception-card">
             <div className="flex items-center justify-between gap-4">
-              <span className="pill pill-red">Rejected</span>
+              <span className={`pill ${issue.severity === "ERROR" ? "pill-red" : "pill-amber"}`}>
+                {issue.severity === "ERROR" ? "Rejected" : "Suspicious"}
+              </span>
               <code>{String(issue.raw_payload?.source_document ?? issue.raw_payload?.meter_id ?? issue.raw_payload?.expense_id ?? `Raw #${issue.raw_record}`)}</code>
             </div>
-            <p className="mt-4 text-base"><strong>Why it is stuck:</strong> {issue.message}</p>
+            <p className="mt-4 text-base"><strong>Why it is flagged:</strong> {issue.message}</p>
             <div className="mt-4 rounded bg-white px-4 py-3">
               <strong>Next step:</strong> {nextStep(issue.code)}
             </div>

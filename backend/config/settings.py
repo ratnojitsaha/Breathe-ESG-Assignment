@@ -6,6 +6,11 @@ try:
 except ImportError:
     load_dotenv = None
 
+try:
+    import dj_database_url
+except ImportError:
+    dj_database_url = None
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 if load_dotenv:
     load_dotenv(BASE_DIR / ".env")
@@ -43,7 +48,15 @@ MIDDLEWARE = [
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 
-if os.getenv("DATABASE_ENGINE") == "postgres":
+if dj_database_url and os.getenv("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=os.getenv("DATABASE_URL"),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+elif os.getenv("DATABASE_ENGINE") == "postgres":
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
