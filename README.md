@@ -5,7 +5,7 @@ A high-fidelity ESG data orchestration engine designed to transform fragmented e
 ## 🚀 Live Deployment
 - **Frontend Dashboard:** [https://breathe-esg-assignment-livid.vercel.app/](https://breathe-esg-assignment-livid.vercel.app/)
 - **Backend API:** [https://breathe-esg-assignment-3nq5.onrender.com/api/](https://breathe-esg-assignment-3nq5.onrender.com/api/)
-- **Admin Portal:** [https://breathe-esg-assignment-3nq5.onrender.com/admin/](https://esg-ingestion-prototype.onrender.com/admin/)
+- **Admin Portal:** [https://breathe-esg-assignment-3nq5.onrender.com/admin/](https://breathe-esg-assignment-3nq5.onrender.com/admin/)
 - **Default Credentials:** `admin` / `admin1234`
 
 ---
