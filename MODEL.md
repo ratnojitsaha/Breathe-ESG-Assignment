@@ -1,56 +1,54 @@
-# Data Model
+# Data Model & Architectural Design
 
-## Core Tables
+This document details the schema and architectural decisions for the Breathe ESG Ingestion Platform.
 
-`Company` is the tenant boundary. Every operational record, issue, upload, and audit log carries `company_id` so API filters can keep data scoped.
+## 1. Multi-Tenancy Strategy
+The platform is built as a **Multi-Tenant SaaS** from the ground up.
+- **Tenant Boundary**: The `Company` model acts as the primary isolation boundary.
+- **Scoping**: Every operational table—from `DataSource` to `AuditLog`—carries a `company_id`. 
+- **Isolation**: API queries are strictly filtered by company ID. In a production environment, this would be reinforced by middleware (e.g., `django-multitenant`) or database-level Row Level Security (RLS) to ensure that Tenant A can never access Tenant B's data.
 
-`DataSource` represents a configured source for a company: SAP fuel/procurement, utility electricity, or corporate travel.
+## 2. Source-of-Truth Tracking (Raw vs. Normalized)
+Auditors require proof that the data shown in reports matches the original source. To satisfy this, we use a two-tier storage strategy:
+- **`RawRecord`**: Stores the exact, unmodified payload from the source system (SAP, Utility portal, etc.) as a JSON blob. This is the "Evidence."
+- **`NormalizedRecord`**: Stores the interpreted, cleaned, and categorized version of that data. This is the "Operational Data."
+- **Lineage**: A 1:1 relationship between `NormalizedRecord` and `RawRecord` allows an auditor to click any row in the dashboard and immediately view the original source payload that produced it.
 
-`RawUpload` stores upload metadata: source type, filename, uploader, timestamp, processing status, and record counts.
+## 3. Scope 1/2/3 Categorization
+The platform automatically routes ingested data into the appropriate GHG Protocol categories:
+- **Scope 1 (Direct Emissions)**: Captured via the SAP Fuel & Procurement source (e.g., Diesel, Natural Gas).
+- **Scope 2 (Indirect Emissions)**: Captured via Utility Electricity sources.
+- **Scope 3 (Other Indirect)**: Captured via Corporate Travel (Flights, Hotels, Ground Transport).
+The `SourceType` on the `DataSource` model dictates the default Scope categorization, ensuring consistent reporting.
 
-`RawRecord` stores each unprocessed source row as JSON. This is intentionally separate from normalized data so auditors can compare the exact ingested payload with the normalized result.
+## 4. Unit Normalization Engine
+ESG data arrives in a "messy" state: Gallons vs. Liters, MWh vs. kWh, Miles vs. Kilometers.
+- **The Mapper**: The `normalization.py` service contains conversion tables (e.g., `FUEL_UNITS_TO_LITERS`).
+- **Canonical Units**: All records are converted to a standard unit (e.g., `L`, `kWh`, `km`) before being stored in the `normalized_value` field.
+- **Preservation**: The original value and unit are preserved in `original_value` and `original_unit` fields for transparency.
 
-`NormalizedRecord` is the canonical activity row. It stores activity category, Scope 1/2/3 category, original and normalized units/values, dates, facility/vendor context, review status, audit lock state, and a one-to-one reference to `RawRecord`.
+## 5. Audit Trail & History
+Every mutation in the system is recorded to ensure accountability.
+- **`AuditLog`**: An append-only table that captures every ingestion event and system change. It uses a `before` and `after` JSON snapshot to show exactly what changed.
+- **`AnalystReview`**: Every manual decision made by an analyst (Approve/Reject) is tracked with timestamps, actor IDs, and comments.
+- **Immutable Logs**: The `AuditLog` model has a overridden `save()` method that prevents updates to existing entries, ensuring the history cannot be tampered with.
 
-`ValidationIssue` stores deterministic validation results against raw and normalized records. Warnings and errors are both visible to analysts.
+## 6. Validation & Flagging (The "Suspicious" Logic)
+Data quality is enforced through a deterministic validation service:
+- **Errors**: Missing critical data (like units or dates) flags the record as `REJECTED`.
+- **Warnings (Suspicious)**: Non-blocking issues—such as a suspiciously high electricity read or an unknown fuel type fallback—flag the record for manual inspection.
+- **Analyst Workflow**: These records appear in the "Failed or Suspicious" panel, requiring an analyst to manually approve them before they can be "Audit Locked."
 
-`AnalystReview` stores review decisions over time.
+---
 
-`AuditLog` stores append-only ingestion and review events with before/after JSON snapshots.
+## Schema Overview (Simplified)
 
-## Relationships
-
-- `Company` has many `DataSource`, `RawUpload`, `RawRecord`, `NormalizedRecord`, `ValidationIssue`, and `AuditLog`.
-- `RawUpload` has many `RawRecord`.
-- `RawRecord` has one `NormalizedRecord`.
-- `RawRecord` and `NormalizedRecord` both link to `ValidationIssue`.
-- `NormalizedRecord` has many `AnalystReview`.
-
-## Normalization Flow
-
-1. Analyst uploads a file against a configured `DataSource`.
-2. A `RawUpload` is created.
-3. Source-specific parser reads each source row.
-4. Each row is stored as `RawRecord.original_payload`.
-5. The parser maps source fields into a `NormalizedRecord`.
-6. Validation rules create `ValidationIssue` rows.
-7. Records with issues become `NEEDS_REVIEW`; clean records remain `PENDING`.
-8. Analyst approves or rejects. Approval sets `locked_for_audit = true`.
-
-## Auditability Strategy
-
-Raw payloads are never overwritten. Normalized rows point back to raw records using a one-to-one relationship and a source reference from the original system where available. Review changes create `AnalystReview` and `AuditLog` entries. `AuditLog.save()` rejects updates to existing rows.
-
-## Multi-Tenancy Strategy
-
-This prototype uses row-level tenancy through `Company` foreign keys. In production, this would be backed by authentication, authorization, query scoping middleware, and database constraints or row-level security for stronger isolation.
-
-## Source Lineage Strategy
-
-Lineage is preserved through:
-
-- `RawUpload`: file-level provenance.
-- `RawRecord`: row-level source payload.
-- `NormalizedRecord.raw_record`: canonical-to-raw link.
-- `source_record_reference`: source document, bill, expense, or fallback row reference.
-- `AuditLog`: action history.
+| Model | Purpose |
+| :--- | :--- |
+| `Company` | The tenant (e.g., Breathe ESG Assignment). |
+| `DataSource` | Configuration for a specific stream (e.g., "SAP MM Export"). |
+| `RawUpload` | Metadata for an uploaded file (status, row counts). |
+| `RawRecord` | The original source JSON (the Evidence). |
+| `NormalizedRecord`| The cleaned activity row (the Operational Data). |
+| `ValidationIssue` | Flags for errors or suspicious data. |
+| `AuditLog` | Append-only history of all system actions. |

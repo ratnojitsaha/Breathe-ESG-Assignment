@@ -1,25 +1,35 @@
-# Source Assumptions
+# Source Data Research & Assumptions
 
-## SAP Fuel / Procurement
+This document details the research into the real-world formats for SAP, Utility, and Travel data that informed the design of our parsers and sample datasets.
 
-Researched real-world shape: SAP ECC/S/4HANA material/procurement extracts often contain plant codes, posting dates, material descriptions, quantities, base units, vendors, and purchasing document references. German SAP configurations may use labels such as `Werk`, `Buchungsdatum`, `Menge`, `MEINS`, and `Lieferant`.
+## 1. SAP Fuel & Procurement (Scope 1)
+**Real-World Context**: SAP ECC and S/4HANA systems typically manage fuel procurement through Goods Movement (MM) or Procurement (PO) modules.
+- **Research**: We looked at common IDoc structures (like `MBGMCR03`) and standard ALV grid exports. These formats often include plant codes (`Werk`), posting dates (`Buchungsdatum`), and material types.
+- **Sample Realism**: `samples/sap_fuel_export.csv` includes:
+    - Inconsistent header casing and German labels (e.g., `Menge` for Quantity).
+    - Messy date formats (e.g., `20260315` and `15.03.2026`).
+    - Negative quantities representing reversals or returns.
+- **Production Risks**: In a real deployment, custom movement types (Z-codes) and plant-specific unit-of-measure overrides would require a robust mapping table managed by the admin.
 
-Sample realism: `samples/sap_fuel_export.csv` includes German-style dates, compact `YYYYMMDD`, inconsistent fuel units, plant codes, vendor names, purchasing references, a negative quantity, an unknown fuel type, and a malformed date.
+## 2. Utility Electricity (Scope 2)
+**Real-World Context**: Commercial utility data is often retrieved from portal exports or "Green Button" standard files.
+- **Research**: Commercial bills rarely align with calendar months. They often feature multiple meters per building and usage intervals (15/30/60 min).
+- **Sample Realism**: `samples/utility_electricity_export.csv` includes:
+    - Billing periods that cross month boundaries (e.g., Feb 15 to March 14).
+    - Unit mix (kWh and MWh).
+    - A "Suspiciously" high usage row designed to trigger a dashboard warning.
+- **Production Risks**: "Estimated" reads are common in utility data. A production system would need to flag whether a record is based on an actual meter reading or a provider's estimate.
 
-Production risk: source-specific custom fields, plant lookup tables, unit-of-measure configuration, reversals, and duplicate purchasing documents would need deeper SAP integration.
+## 3. Corporate Travel (Scope 3)
+**Real-World Context**: Systems like SAP Concur, Navan, or Egencia expose data via JSON APIs or scheduled flat-file exports.
+- **Research**: Travel data is hierarchical. A single "Expense" might contain multiple "Itinerary Segments" (Flights, Hotels, Rail).
+- **Sample Realism**: `samples/corporate_travel_concur.json` includes:
+    - IATA airport codes (e.g., `JFK`, `LHR`).
+    - Mixed categories: Flights (Distance-based) and Hotels (Night-based).
+    - Validation triggers: An invalid airport code (`XYZ`) and a missing distance for a flight.
+- **Production Risks**: Distance calculation (Great Circle Distance vs. Actual Flown) is a common source of discrepancy. A production system would integrate with a distance API (like the ICAO API) for validation.
 
-## Utility Electricity
+---
 
-Researched real-world shape: utility portal exports commonly include meter IDs, service addresses, billing period start/end, usage, units, tariff/rate plan, and bill number. Billing periods often cross calendar months.
-
-Sample realism: `samples/utility_electricity_export.csv` includes multiple meters, non-calendar billing cycles, kWh and MWh, industrial tariffs, a suspiciously large usage value, and a negative row.
-
-Production risk: estimated reads, demand charges, time-of-use intervals, multiple registers, PDF-only providers, and regional utility formats would require provider-specific adapters.
-
-## Corporate Travel
-
-Researched real-world shape: travel and expense systems such as Concur/Navan expose expenses with category, date, employee/cost center, vendor, flight route, hotel nights, and ground transport fields. Flight distance may be missing while airport codes are present.
-
-Sample realism: `samples/corporate_travel_concur.json` includes flights, hotel nights, taxis, cost centers, airline/vendor fields, real airport codes, one missing distance, and one invalid airport code.
-
-Production risk: itinerary changes, multi-leg flights, train travel, refunds, cabin-class methodology, route distance lookup, and employee privacy handling would need stronger modeling.
+## Why CSV for this Prototype?
+While IDoc (SAP) and Green Button XML (Utility) are more "native" enterprise formats, **CSV was chosen for this prototype** to demonstrate high-fidelity ingestion, analysis, and visualization without requiring the proprietary middleware and system access usually needed to process those complex binary/XML structures. The logic within our parsers, however, is designed to be easily extended to these native formats.
