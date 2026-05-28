@@ -1,61 +1,65 @@
-# Breathe ESG Ingestion Platform — Prototype
+# Breathe ESG Assignment
 
 ## Live Deployment
-- **Dashboard:** [https://esg-ingestion-prototype.vercel.app](https://esg-ingestion-prototype.vercel.app)
-- **API Root:** [https://esg-ingestion-prototype.onrender.com/api/](https://esg-ingestion-prototype.onrender.com/api/)
-- **Admin Portal:** [https://esg-ingestion-prototype.onrender.com/admin/](https://esg-ingestion-prototype.onrender.com/admin/)
-- **Credentials:** `admin` / `admin1234`
 
-## Technical Documentation
-Detailed architectural and research notes precede the code:
-- **[MODEL.md](./MODEL.md)** — Data model, multi-tenancy, and normalization design.
-- **[DECISIONS.md](./DECISIONS.md)** — Ambiguities resolved and technical justifications.
-- **[TRADEOFFS.md](./TRADEOFFS.md)** — Deliberate omissions and future-proofing.
-- **[SOURCES.md](./SOURCES.md)** — Primary-source research on SAP, Utility, and Travel data.
+**Frontend:** https://breathe-esg-assignment-livid.vercel.app/
+
+**Backend API:** https://breathe-esg-assignment-3nq5.onrender.com/
 
 ---
 
 ## Overview
-This prototype implements three ESG data sources end-to-end: **Ingestion → Normalization → Flagging → Review Dashboard**.
 
-1.  **SAP Fuel & Procurement**: Handles material extracts with plant codes, posting dates, and unit inconsistencies.
-2.  **Utility Electricity**: Processes meter-level usage with non-calendar billing cycles.
-3.  **Corporate Travel**: Normalizes Concur-style expense JSON into activity-based flight and hotel records.
+This project is an ESG data ingestion and visualization platform built using React, Django, and Django REST Framework. The system allows ingestion, processing, and visualization of ESG-related organizational data through a responsive dashboard interface.
 
-## Run Locally
+The application demonstrates:
 
-### Prerequisites
-- Python 3.12+
-- Node 22+
-- Docker (optional, for PostgreSQL)
-
-### Backend (Terminal 1)
-```bash
-cd backend
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# Unix
-source .venv/bin/activate
-
-pip install -r requirements.txt
-cp .env.example .env
-python manage.py migrate
-python manage.py seed_demo
-python manage.py runserver
-```
-
-### Frontend (Terminal 2)
-```bash
-cd frontend
-npm install
-npm run dev
-```
-- **Dashboard**: `http://localhost:5173`
-- **Admin**: `http://localhost:8000/admin/`
+* ESG data ingestion and processing
+* Data normalization and validation
+* Interactive dashboard visualization
+* REST API integration
+* Full-stack deployment using Vercel and Render
 
 ---
 
+## Technology Stack
+
+### Frontend
+
+* React
+* TypeScript
+* Vite
+* Tailwind CSS
+
+### Backend
+
+* Django
+* Django REST Framework
+
+### Deployment
+
+* Vercel (Frontend)
+* Render (Backend)
+
+---
+
+## Architecture
+
+The application follows a client-server architecture:
+
+React Frontend → Django REST API → Data Processing Layer
+
+The frontend consumes REST endpoints exposed by the Django backend and renders ESG metrics, summaries, and company-related information.
+
+---
+
+## Data Source Decision
+
+CSV data was used for ingestion because publicly accessible and complete SAP IDoc datasets were not readily available.
+
+While IDoc files provide a more realistic SAP enterprise integration format, they generally require SAP-specific middleware, integration utilities, and system access for proper processing and transformation. For the scope of this assignment, CSV data provided a practical approach for demonstrating ingestion, validation, normalization, and visualization workflows without the overhead of enterprise SAP infrastructure.
+
+---
 ## Architecture Summary
 
 ### Multi-Source Staging
@@ -68,5 +72,45 @@ The system utilizes a **Raw-to-Normalized** pattern. Every ingested row is first
 ### Audit Chokepoint
 All review actions (Approve/Reject) pass through a centralized service that transition statuses and writes append-only `AuditLog` entries in a single database transaction. This ensures that no record can be "Audit Locked" without a clear, traceable history.
 
-### The IDoc Decision
+### The IDoc vs CSV Decision
 CSV data was used for SAP ingestion because publicly accessible and complete IDoc datasets were not readily available. While IDoc files provide a more realistic SAP enterprise integration format, they typically require SAP-specific middleware and system access. For this prototype, CSV allows for a practical approach to demonstrating complex ingestion and normalization without the overhead of enterprise middleware.
+
+
+---
+
+## Local Setup
+
+### Backend
+
+```bash
+cd backend
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+pip install -r requirements.txt
+
+python manage.py migrate
+python manage.py runserver
+```
+
+### Frontend
+
+```bash
+cd frontend
+
+npm install
+npm run dev
+```
+
+Frontend:
+http://localhost:5173
+
+Backend:
+http://localhost:8000
+
+```
+```
+
+
