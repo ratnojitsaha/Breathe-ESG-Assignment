@@ -1,69 +1,52 @@
-from django.db import transaction
-
 from ingestion.models import (
     AuditLog,
-    NormalizedRecord,
     ProcessingStatus,
     RawRecord,
     RawUpload,
-    ReviewStatus,
     SourceType,
-    ValidationIssue,
 )
 
 from .parsers import parse_sap_rows, parse_travel_rows, parse_utility_rows
 from .validation import validate_sap, validate_travel, validate_utility
+from ingestion.normalizers.sap_normalizer import normalize_sap_row
+from ingestion.normalizers.utility_normalizer import normalize_utility_row
+from ingestion.normalizers.travel_normalizer import normalize_travel_row
 
 
-PARSER_BY_SOURCE = {
-    SourceType.SAP_FUEL: (parse_sap_rows, validate_sap),
-    SourceType.UTILITY_ELECTRICITY: (parse_utility_rows, validate_utility),
-    SourceType.CORPORATE_TRAVEL: (parse_travel_rows, validate_travel),
+PARSER_MAP = {
+    SourceType.SAP_FUEL: (parse_sap_rows, validate_sap, normalize_sap_row),
+    SourceType.UTILITY_ELECTRICITY: (parse_utility_rows, validate_utility, normalize_utility_row),
+    SourceType.CORPORATE_TRAVEL: (parse_travel_rows, validate_travel, normalize_travel_row),
 }
 
 
 def ingest_upload(raw_upload: RawUpload, file_obj, actor=None):
-    parser, validator = PARSER_BY_SOURCE[raw_upload.source_type]
+    parser, validator, normalizer = PARSER_MAP[raw_upload.source_type]
     totals = {"total": 0, "failed": 0, "review": 0, "approved": 0}
 
     try:
-        with transaction.atomic():
-            for row_number, payload, normalized_data in parser(file_obj):
-                totals["total"] += 1
-                raw_record = RawRecord.objects.create(
-                    company=raw_upload.company,
-                    raw_upload=raw_upload,
-                    row_number=row_number,
-                    source_reference=normalized_data["source_record_reference"],
-                    original_payload=payload,
-                    parsing_status=ProcessingStatus.PROCESSED,
-                )
-                normalized = NormalizedRecord.objects.create(
-                    company=raw_upload.company,
-                    raw_record=raw_record,
-                    source_type=raw_upload.source_type,
-                    **normalized_data,
-                )
-                issues = validator(payload, normalized_data)
-                has_error = any(item["severity"] == "ERROR" for item in issues)
-                if issues:
-                    totals["review"] += 1
-                    normalized.review_status = ReviewStatus.NEEDS_REVIEW
-                    normalized.save(update_fields=["review_status", "updated_at"])
-                else:
-                    totals["approved"] += 1
-                for item in issues:
-                    ValidationIssue.objects.create(
-                        company=raw_upload.company,
-                        raw_record=raw_record,
-                        normalized_record=normalized,
-                        **item,
-                    )
-                if has_error:
-                    raw_record.parsing_status = ProcessingStatus.FAILED
-                    raw_record.parse_error = "Validation error; analyst review required"
-                    raw_record.save(update_fields=["parsing_status", "parse_error", "updated_at"])
-                    totals["failed"] += 1
+        # We no longer wrap the whole thing in atomic. Each row is atomic in the normalizer.
+        for row_number, payload, normalized_data in parser(file_obj):
+            totals["total"] += 1
+            raw_record = RawRecord.objects.create(
+                company=raw_upload.company,
+                raw_upload=raw_upload,
+                row_number=row_number,
+                source_reference=normalized_data["source_record_reference"],
+                original_payload=payload,
+                parsing_status=ProcessingStatus.PROCESSED,
+            )
+            
+            # Delegate to source-specific normalizer (which handles staging, activity layer, and validation)
+            is_approved, is_failed = normalizer(raw_record, payload, normalized_data, validator)
+            
+            if is_failed:
+                totals["failed"] += 1
+            if is_approved:
+                totals["approved"] += 1
+            else:
+                totals["review"] += 1
+
     except Exception as exc:
         raw_upload.status = ProcessingStatus.FAILED
         raw_upload.failure_message = str(exc)

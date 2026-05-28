@@ -1,5 +1,5 @@
 from django.db.models import Count, Q, Sum
-from rest_framework import mixins, status, viewsets
+from rest_framework import mixins, status, viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
@@ -30,7 +30,13 @@ from .services.ingest import ingest_upload
 from .services.review import review_record
 
 
-class CompanyViewSet(viewsets.ReadOnlyModelViewSet):
+class PrototypeViewSetMixin:
+    """Mixin to disable authentication and permissions for the prototype."""
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+
+class CompanyViewSet(PrototypeViewSetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
 
@@ -62,7 +68,9 @@ class CompanyViewSet(viewsets.ReadOnlyModelViewSet):
                 "company": CompanySerializer(company).data,
                 "totals": {
                     "records": records.count(),
-                    "needs_attention": records.filter(review_status=ReviewStatus.NEEDS_REVIEW).count(),
+                    "needs_attention": records.filter(
+                        review_status__in=[ReviewStatus.PENDING, ReviewStatus.NEEDS_REVIEW]
+                    ).count(),
                     "failed_at_ingest": issues.filter(severity=IssueSeverity.ERROR).count(),
                     "awaiting_setup": issues.filter(
                         code__in=[
@@ -89,7 +97,7 @@ class CompanyViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
 
-class DataSourceViewSet(viewsets.ReadOnlyModelViewSet):
+class DataSourceViewSet(PrototypeViewSetMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = DataSourceSerializer
     filterset_fields = ["company", "source_type", "active"]
 
@@ -97,7 +105,7 @@ class DataSourceViewSet(viewsets.ReadOnlyModelViewSet):
         return DataSource.objects.select_related("company").all()
 
 
-class RawUploadViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+class RawUploadViewSet(PrototypeViewSetMixin, mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     serializer_class = RawUploadSerializer
     parser_classes = [MultiPartParser, FormParser]
     filterset_fields = ["company", "source_type", "status"]
@@ -124,7 +132,7 @@ class RawUploadViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewset
         return Response(RawUploadSerializer(raw_upload).data, status=response_status)
 
 
-class RawRecordViewSet(viewsets.ReadOnlyModelViewSet):
+class RawRecordViewSet(PrototypeViewSetMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = RawRecordSerializer
     filterset_fields = ["company", "raw_upload", "parsing_status"]
 
@@ -132,7 +140,7 @@ class RawRecordViewSet(viewsets.ReadOnlyModelViewSet):
         return RawRecord.objects.select_related("company", "raw_upload").all()
 
 
-class NormalizedRecordViewSet(viewsets.ReadOnlyModelViewSet):
+class NormalizedRecordViewSet(PrototypeViewSetMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = NormalizedRecordSerializer
     filterset_fields = ["company", "source_type", "review_status", "locked_for_audit", "scope_category"]
 
@@ -167,7 +175,7 @@ class NormalizedRecordViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(NormalizedRecordSerializer(record).data)
 
 
-class ValidationIssueViewSet(viewsets.ReadOnlyModelViewSet):
+class ValidationIssueViewSet(PrototypeViewSetMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = ValidationIssueSerializer
     filterset_fields = ["company", "severity", "code", "normalized_record", "raw_record"]
 
@@ -175,7 +183,7 @@ class ValidationIssueViewSet(viewsets.ReadOnlyModelViewSet):
         return ValidationIssue.objects.select_related("company", "raw_record", "normalized_record").all()
 
 
-class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
+class AuditLogViewSet(PrototypeViewSetMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = AuditLogSerializer
     filterset_fields = ["company", "action", "entity_type", "entity_id"]
 

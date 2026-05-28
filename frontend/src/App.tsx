@@ -96,7 +96,7 @@ export default function App() {
   const activeCompany = companies.find((company) => company.id === companyId) ?? null;
   const activeSource = sourceTab === "ALL" ? undefined : sourceTab;
 
-  async function load(nextCompanyId = companyId) {
+  async function load(nextCompanyId = companyId, forceResetSelection = false) {
     setLoading(true);
     setError("");
     try {
@@ -115,13 +115,28 @@ export default function App() {
         api.records(selectedCompanyId, undefined, activeSource),
         api.auditLogs(selectedCompanyId),
       ]);
+      
       setSummary(summaryData);
       setSources(sourcePage.results);
       setUploads(uploadPage.results);
       setIssues(issuePage.results);
-      setRecords(recordPage.results);
+      
+      const allRecords = recordPage.results;
+      setRecords(allRecords);
       setLogs(logPage.results);
-      setSelected((current) => current ?? recordPage.results[0] ?? null);
+
+      setSelected((current) => {
+        if (current && !forceResetSelection) {
+          const stillExists = allRecords.find((r) => r.id === current.id);
+          // If the selected record is now approved/rejected or locked, we should find a new one
+          if (stillExists && !stillExists.locked_for_audit && stillExists.review_status !== "APPROVED" && stillExists.review_status !== "REJECTED") {
+            return stillExists;
+          }
+        }
+        
+        // Priority selection: find the first (most recent) record that hasn't been reviewed
+        return allRecords.find((r) => !r.locked_for_audit && r.review_status !== "APPROVED" && r.review_status !== "REJECTED") ?? allRecords[0] ?? null;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load platform data");
     } finally {
@@ -134,7 +149,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (companyId) void load(companyId);
+    if (companyId) void load(companyId, true);
   }, [sourceTab]);
 
   const filteredIssues = useMemo(() => {
@@ -154,13 +169,18 @@ export default function App() {
   const lockedRecords = records.filter((record) => record.locked_for_audit);
 
   async function review(record: NormalizedRecord, status: "APPROVED" | "REJECTED") {
-    await api.review(
-      record.id,
-      status,
-      status === "APPROVED" ? "Approved after analyst inspection." : "Rejected pending source correction."
-    );
-    setSelected(null);
-    await load(companyId);
+    setError("");
+    try {
+      await api.review(
+        record.id,
+        status,
+        status === "APPROVED" ? "Approved after analyst inspection." : "Rejected pending source correction."
+      );
+      setSelected(null);
+      await load(companyId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to submit review. Please check backend connection.");
+    }
   }
 
   function exportReport() {

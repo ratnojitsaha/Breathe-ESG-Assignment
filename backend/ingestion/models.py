@@ -98,6 +98,42 @@ class RawRecord(TimestampedModel):
         ordering = ["raw_upload_id", "row_number"]
 
 
+class SapGoodsMovementStaging(TimestampedModel):
+    raw_record = models.OneToOneField(RawRecord, on_delete=models.CASCADE, related_name="sap_staging")
+    plant_code = models.CharField(max_length=40, blank=True)
+    posting_date = models.CharField(max_length=40, blank=True)
+    quantity = models.CharField(max_length=40, blank=True)
+    unit = models.CharField(max_length=40, blank=True)
+    material_description = models.CharField(max_length=255, blank=True)
+    source_document = models.CharField(max_length=255, blank=True)
+    vendor_name = models.CharField(max_length=255, blank=True)
+
+
+class UtilityIntervalStaging(TimestampedModel):
+    raw_record = models.OneToOneField(RawRecord, on_delete=models.CASCADE, related_name="utility_staging")
+    meter_id = models.CharField(max_length=80, blank=True)
+    period_start = models.CharField(max_length=40, blank=True)
+    period_end = models.CharField(max_length=40, blank=True)
+    usage = models.CharField(max_length=40, blank=True)
+    unit = models.CharField(max_length=40, blank=True)
+    source_document = models.CharField(max_length=255, blank=True)
+    tariff_description = models.CharField(max_length=255, blank=True)
+
+
+class TravelExpenseStaging(TimestampedModel):
+    raw_record = models.OneToOneField(RawRecord, on_delete=models.CASCADE, related_name="travel_staging")
+    expense_id = models.CharField(max_length=80, blank=True)
+    expense_type = models.CharField(max_length=80, blank=True)
+    transaction_date = models.CharField(max_length=40, blank=True)
+    amount = models.CharField(max_length=40, blank=True)
+    currency = models.CharField(max_length=10, blank=True)
+    vendor_name = models.CharField(max_length=255, blank=True)
+    origin_airport = models.CharField(max_length=10, blank=True)
+    destination_airport = models.CharField(max_length=10, blank=True)
+    distance_km = models.CharField(max_length=40, blank=True)
+    hotel_nights = models.CharField(max_length=40, blank=True)
+
+
 class NormalizedRecord(TimestampedModel):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="normalized_records")
     raw_record = models.OneToOneField(RawRecord, on_delete=models.PROTECT, related_name="normalized_record")
