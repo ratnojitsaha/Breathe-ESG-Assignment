@@ -1,8 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const VITE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-if (!API_BASE) {
-  throw new Error("VITE_API_BASE_URL is not set. Configure it in frontend/.env.");
-}
+// Robust API URL construction: ensure no trailing slash on base, and ensure /api suffix if not present
+const API_BASE = (VITE_API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+const API_URL = API_BASE.endsWith("/api") ? API_BASE : `${API_BASE}/api`;
 
 export type Company = { id: number; name: string; slug: string };
 export type DataSource = { id: number; company: number; source_type: string; name: string };
@@ -81,7 +81,7 @@ export type AuditLog = {
 type Page<T> = { count: number; results: T[] };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, init);
+  const response = await fetch(`${API_URL}${path}`, init);
   if (!response.ok) {
     const text = await response.text();
     let message = text || response.statusText;
