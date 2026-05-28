@@ -36,7 +36,11 @@ class Command(BaseCommand):
         samples_dir = settings.BASE_DIR.parent / "samples"
 
         for slug, name in companies:
-            company, _ = Company.objects.get_or_create(slug=slug, defaults={"name": name})
+            # Rebrand old 'acme-manufacturing' slug if it exists
+            if slug == "breathe-esg-assignment":
+                Company.objects.filter(slug="acme-manufacturing").update(slug="breathe-esg-assignment", name="Breathe-ESG-Assignment")
+
+            company, _ = Company.objects.update_or_create(slug=slug, defaults={"name": name})
             for source_type, source_name, external, filename, content_type in source_specs:
                 data_source, _ = DataSource.objects.get_or_create(
                     company=company,
